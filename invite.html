@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Valentine Invite</title>
+  <style>
+    :root{
+      --bg:#fff2f6; --card:#ffffffcc; --txt:#1f1f24; --muted:#5c5c6a;
+      --accent:#ff3b7a; --accent2:#7c3aed;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;font-family:system-ui,Segoe UI,Roboto,Arial;color:var(--txt);
+      min-height:100vh;display:grid;place-items:center;padding:18px;overflow:hidden;
+    }
+    .bg{
+      position:fixed;inset:0;z-index:-2;
+      background:
+        radial-gradient(900px 600px at 20% 10%, #ffe0ec, transparent 60%),
+        radial-gradient(900px 600px at 80% 20%, #e9d5ff, transparent 55%),
+        linear-gradient(135deg, var(--bg), #fff);
+    }
+    .wrap{
+      width:min(820px,100%);
+      transition: transform 0.12s ease;
+    }
+    .card{
+      background:var(--card);
+      border:1px solid rgba(0,0,0,.06);
+      backdrop-filter: blur(10px);
+      border-radius:18px;
+      padding:18px 16px;
+      box-shadow:0 14px 40px rgba(0,0,0,.10);
+    }
+    h1{margin:0 0 8px;font-size:28px}
+    .sub{color:var(--muted);margin-bottom:14px}
+    .msg{background:#fff;border:1px solid #eee;border-radius:14px;padding:14px;line-height:1.45}
+    .btns{
+      position:relative;
+      display:flex;gap:12px;flex-wrap:wrap;
+      margin-top:14px;align-items:center;justify-content:center;
+      padding:6px;
+    }
+    button{
+      flex:1;min-width:170px;
+      padding:12px 14px;border:0;border-radius:14px;
+      font-weight:900;font-size:15px;cursor:pointer;
+      transform-origin:center;
+      transition: transform 0.18s ease, filter 0.18s ease;
+      user-select:none;
+      touch-action:manipulation;
+    }
+    #yesBtn{background:var(--accent);color:#fff;z-index:2;position:relative}
+    #noBtn{background:#111;color:#fff;z-index:1;position:relative}
+    .result{
+      margin-top:12px;padding:12px;border-radius:14px;border:1px solid #e6e6ff;background:#f6f6ff;
+      display:none
+    }
+    .small{margin-top:10px;font-size:12px;color:var(--muted)}
+    /* screen shake */
+    @keyframes shake {
+      0%{transform:translate(0,0)}
+      15%{transform:translate(-6px,2px)}
+      30%{transform:translate(6px,-2px)}
+      45%{transform:translate(-5px,-2px)}
+      60%{transform:translate(5px,2px)}
+      75%{transform:translate(-3px,1px)}
+      100%{transform:translate(0,0)}
+    }
+    .shake{animation: shake 0.35s ease}
+    /* confetti canvas */
+    #confetti{
+      position:fixed;inset:0;pointer-events:none;z-index:10;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="confetti"></canvas>
+  <div class="bg"></div>
+
+  <div class="wrap" id="wrap">
+    <div class="card">
+      <h1 id="title">💌 Valentine Invite</h1>
+      <div class="sub" id="sub">Open invite</div>
+
+      <div class="msg" id="message"></div>
+
+      <div class="btns" id="btnArea">
+        <button id="yesBtn">Yes ❤️</button>
+        <button id="noBtn">No 😭</button>
+      </div>
+
+      <div class="result" id="result"></div>
+      <div class="small">No logins, no payments — just a cute invite link.</div>
+    </div>
+  </div>
+
+<script>
+  // --- decode payload from URL hash ---
+  const dec = (hash) => {
+    const json = decodeURIComponent(escape(atob(hash)));
+    return JSON.parse(json);
+  };
+
+  function applyTheme(t){
+    t = (t||"").toLowerCase();
+    if(t==="purple"){
+      document.documentElement.style.setProperty("--bg","#f5f0ff");
+      document.documentElement.style.setProperty("--accent","#7c3aed");
+      document.documentElement.style.setProperty("--accent2","#ff3b7a");
+    } else if(t==="dark"){
+      document.documentElement.style.setProperty("--bg","#0b0b10");
+      document.documentElement.style.setProperty("--card","#141421cc");
+      document.documentElement.style.setProperty("--txt","#f2f2f6");
+      document.documentElement.style.setProperty("--muted","#b8b8c6");
+      document.body.style.color = "var(--txt)";
+    }
+  }
+
+  const hash = location.hash.replace(/^#/,"");
+  const titleEl = document.getElementById("title");
+  const subEl = document.getElementById("sub");
+  const msgEl = document.getElementById("message");
+  const result = document.getElementById("result");
+
+  let data = null;
+
+  if(!hash){
+    msgEl.textContent = "Missing invite data. Use create.html to generate a link.";
+  } else {
+    try{
+      data = dec(hash);
+      applyTheme(data.theme);
+
+      const from = data.from || "Someone";
+      const to = data.to || "you";
+      titleEl.textContent = `💘 ${to}, you got an invite!`;
+      subEl.textContent = `From: ${from}`;
+      msgEl.textContent = data.msg || "Will you be my valentine?";
+
+      document.getElementById("yesBtn").textContent = data.yes || "Yes ❤️";
+      document.getElementById("noBtn").textContent  = data.no  || "No 😭";
+    } catch(e){
+      msgEl.textContent = "Invalid invite link.";
+    }
+  }
+
+  // --- YES grows + NO shakes screen ---
+  const wrap = document.getElementById("wrap");
+  const yesBtn = document.getElementById("yesBtn");
+  const noBtn  = document.getElementById("noBtn");
+  const btnArea = document.getElementById("btnArea");
+
+  let yesScale = 1;
+
+  function shakeScreen(){
+    wrap.classList.remove("shake");
+    // force reflow
+    void wrap.offsetWidth;
+    wrap.classList.add("shake");
+  }
+
+  noBtn.addEventListener("click", () => {
+    yesScale += 0.35;
+    yesBtn.style.transform = `scale(${yesScale})`;
+    yesBtn.style.zIndex = 5;
+    yesBtn.style.filter = "brightness(1.02)";
+
+    shakeScreen();
+    result.style.display = "block";
+    result.innerHTML = "😏 Hmm… try again.";
+  });
+
+  // --- YES follows finger/mouse (magnet effect) ---
+  // The bigger the YES gets, the stronger it feels.
+  let pointer = {x: null, y: null};
+  function onMove(clientX, clientY){
+    pointer.x = clientX; pointer.y = clientY;
+
+    const r = yesBtn.getBoundingClientRect();
+    const cx = r.left + r.width/2;
+    const cy = r.top  + r.height/2;
+
+    const dx = pointer.x - cx;
+    const dy = pointer.y - cy;
+
+    // limit pull distance so it feels subtle (not crazy)
+    const maxPull = 18 + (yesScale * 6);
+    const dist = Math.hypot(dx, dy) || 1;
+
+    const strength = Math.min(1, 140 / dist) * (0.35 + (yesScale - 1) * 0.12);
+    const px = (dx / dist) * maxPull * strength;
+    const py = (dy / dist) * maxPull * strength;
+
+    yesBtn.style.transform = `translate(${px}px, ${py}px) scale(${yesScale})`;
+  }
+
+  window.addEventListener("mousemove", (e) => onMove(e.clientX, e.clientY), {passive:true});
+  window.addEventListener("touchmove", (e) => {
+    if(!e.touches || !e.touches[0]) return;
+    onMove(e.touches[0].clientX, e.touches[0].clientY);
+  }, {passive:true});
+
+  // When pointer leaves / ends, reset translation but keep scale
+  window.addEventListener("mouseout", () => {
+    yesBtn.style.transform = `scale(${yesScale})`;
+  });
+  window.addEventListener("touchend", () => {
+    yesBtn.style.transform = `scale(${yesScale})`;
+  }, {passive:true});
+
+  // --- CONFETTI on YES ---
+  const canvas = document.getElementById("confetti");
+  const ctx = canvas.getContext("2d");
+  let W=0,H=0, raf=null;
+  function resize(){
+    W = canvas.width = window.innerWidth * devicePixelRatio;
+    H = canvas.height = window.innerHeight * devicePixelRatio;
+    ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+  }
+  window.addEventListener("resize", resize);
+  resize();
+
+  function rand(min,max){return Math.random()*(max-min)+min}
+  function confettiBurst(){
+    const pieces = [];
+    const count = 160;
+    const originX = window.innerWidth/2;
+    const originY = window.innerHeight/3;
+
+    for(let i=0;i<count;i++){
+      pieces.push({
+        x: originX + rand(-40,40),
+        y: originY + rand(-20,20),
+        vx: rand(-6,6),
+        vy: rand(-10,-3),
+        g: rand(0.18,0.28),
+        r: rand(3,6),
+        a: 1,
+        spin: rand(-0.2,0.2),
+        rot: rand(0,Math.PI*2)
+      });
+    }
+
+    const start = performance.now();
+    function frame(t){
+      const dt = Math.min(32, t - (frame._t || t));
+      frame._t = t;
+
+      ctx.clearRect(0,0,window.innerWidth,window.innerHeight);
+
+      for(const p of pieces){
+        p.vy += p.g * (dt/16);
+        p.x  += p.vx * (dt/16);
+        p.y  += p.vy * (dt/16);
+        p.rot += p.spin * (dt/16);
+
+        // fade after ~1.2s
+        const life = (t - start) / 1400;
+        p.a = Math.max(0, 1 - life);
+
+        // draw simple rectangles (no fixed colors requested by you, but confetti needs color)
+        // We'll use a rotating hue based on index-like randomness.
+        const hue = (p.x + p.y) % 360;
+        ctx.save();
+        ctx.globalAlpha = p.a;
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot);
+        ctx.fillStyle = `hsl(${hue} 90% 60%)`;
+        ctx.fillRect(-p.r, -p.r, p.r*2.2, p.r*1.6);
+        ctx.restore();
+      }
+
+      if((t - start) < 1600){
+        raf = requestAnimationFrame(frame);
+      } else {
+        ctx.clearRect(0,0,window.innerWidth,window.innerHeight);
+        cancelAnimationFrame(raf);
+        raf = null;
+      }
+    }
+    if(raf) cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(frame);
+  }
+
+  yesBtn.addEventListener("click", () => {
+    confettiBurst();
+    result.style.display = "block";
+    result.innerHTML = `✅ You said <b>YES</b>! 💞<br><span style="color:#555">Screenshot this and send it back.</span>`;
+
+    // lock buttons after yes (optional)
+    yesBtn.disabled = true;
+    noBtn.disabled = true;
+    yesBtn.style.filter = "brightness(1.05)";
+  });
+</script>
+</body>
+</html>

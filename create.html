@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Create a Valentine Invite</title>
+  <style>
+    :root{--bg:#fff2f6;--card:#fff;--txt:#1f1f24;--muted:#5c5c6a;--accent:#ff3b7a}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,Segoe UI,Roboto,Arial;background:var(--bg);color:var(--txt)}
+    .wrap{max-width:860px;margin:0 auto;padding:28px 16px}
+    h1{margin:0 0 10px;font-size:30px}
+    .note{color:var(--muted);margin:0 0 18px}
+    .card{
+      background:var(--card);border-radius:18px;padding:18px 16px;
+      box-shadow:0 14px 40px rgba(0,0,0,.10);border:1px solid rgba(0,0,0,.06)
+    }
+    label{display:block;font-size:13px;margin:12px 0 6px;color:#444}
+    input,textarea{
+      width:100%;padding:12px;border:1px solid #ddd;border-radius:12px;
+      font-size:15px;outline:none
+    }
+    textarea{min-height:92px;resize:vertical}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    @media(max-width:680px){.row{grid-template-columns:1fr}}
+    button{
+      margin-top:14px;width:100%;padding:12px 14px;border:0;border-radius:12px;
+      background:var(--accent);color:#fff;font-weight:800;font-size:15px;cursor:pointer
+    }
+    .out{
+      margin-top:12px;padding:12px;border-radius:12px;background:#f6f6ff;border:1px solid #e6e6ff;
+      display:none
+    }
+    .out input{
+      margin-top:8px;background:#fff
+    }
+    .minirow{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+    .minirow button{margin:0;flex:1;background:#111}
+    .minirow button.secondary{background:#7c3aed}
+    .small{font-size:12px;color:var(--muted);margin-top:10px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Create a Valentine Invite 💌</h1>
+    <p class="note">Fill this in, generate a link, send it. Nothing is stored on a server.</p>
+
+    <div class="card">
+      <div class="row">
+        <div>
+          <label>From</label>
+          <input id="from" placeholder="e.g. Olek" />
+        </div>
+        <div>
+          <label>To</label>
+          <input id="to" placeholder="e.g. Amelka" />
+        </div>
+      </div>
+
+      <label>Message</label>
+      <textarea id="msg" placeholder="Will you be my valentine?"></textarea>
+
+      <div class="row">
+        <div>
+          <label>Yes button text</label>
+          <input id="yes" value="Yes ❤️" />
+        </div>
+        <div>
+          <label>No button text</label>
+          <input id="no" value="No 😭" />
+        </div>
+      </div>
+
+      <label>Theme</label>
+      <input id="theme" value="pink" placeholder="pink / purple / dark" />
+
+      <button id="make">Generate link</button>
+
+      <div id="output" class="out"></div>
+      <div class="small">Tip: host these files on Netlify or GitHub Pages.</div>
+    </div>
+  </div>
+
+<script>
+  const safe = (s) => (s || "").toString().trim();
+  const enc = (obj) => btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
+
+  document.getElementById("make").addEventListener("click", async () => {
+    const data = {
+      from: safe(from.value),
+      to: safe(to.value),
+      msg: safe(msg.value) || "Will you be my valentine?",
+      yes: safe(yes.value) || "Yes ❤️",
+      no: safe(no.value) || "No 😭",
+      theme: safe(theme.value).toLowerCase() || "pink",
+      ts: Date.now()
+    };
+
+    const payload = enc(data);
+
+    // Works for Netlify + GitHub Pages (same-folder hosting)
+    const base = location.href.replace(/create\.html?(\?.*)?$/, "");
+    const link = `${base}invite.html#${payload}`;
+
+    const out = document.getElementById("output");
+    out.style.display = "block";
+    out.innerHTML = `
+      <b>Your invite link:</b><br>
+      <input value="${link}" readonly />
+      <div class="minirow">
+        <button id="copy">Copy</button>
+        <button id="open" class="secondary">Open</button>
+      </div>
+    `;
+
+    out.querySelector("#copy").onclick = async () => {
+      try { await navigator.clipboard.writeText(link); out.querySelector("#copy").textContent = "Copied ✅"; }
+      catch { alert("Copy failed. Select and copy manually."); }
+    };
+    out.querySelector("#open").onclick = () => window.open(link, "_blank");
+  });
+</script>
+</body>
+</html>
